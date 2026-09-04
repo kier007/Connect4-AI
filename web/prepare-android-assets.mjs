@@ -14,7 +14,18 @@ async function assemble(output, names) {
 }
 
 await assemble("app.js", ["app.js.01.part", "app.js.02.part", "app.js.03.part", "app.js.04.part", "app.js.05.part"]);
-await assemble("index.html", ["index.html.01.part", "index.html.02.part", "index.html.03.part"]);
+await assemble("index.html", [
+  "index.html.01.part",
+  "index.html.02.part",
+  "index.html.0301.part",
+  "index.html.0302.part",
+  "index.html.0303.part",
+  "index.html.0304.part",
+  "index.html.0305.part",
+  "index.html.0306.part",
+  "index.html.0307.part",
+  "index.html.0308.part"
+]);
 await assemble("styles.css", ["styles.css.01.part", "styles.css.02.part", "styles.css.03.part"]);
 
 for (const file of ["app-icon.svg", "ENGINE_LICENSE.txt", "REACT_LICENSE.txt"]) {

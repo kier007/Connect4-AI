@@ -1,0 +1,12 @@
+eq)){
+        self.postMessage({type:'prediction',col:PERFECT_OPENING[currentSeq],token,requestId,seq:currentSeq,perfect:true,book:true});
+        return;
+      }
+
+      // Stage 1: return a strong move quickly using the same alpha-beta family as Vs AI.
+      // This makes the hollow chip appear promptly instead of waiting on a difficult full solve.
+      const quickDifficulty=e.data.fastDifficulty||'hard';
+      const quickParams=params(quickDifficulty,p.moves,true);
+      const quickScores=searcher.analyze(p,quickParams[0],quickParams[1]);
+      const quickCol=chooseMove(quickScores,'impossible');
+      self.postMessage({type:'pre

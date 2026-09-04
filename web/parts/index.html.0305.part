@@ -1,0 +1,19 @@
+  }
+  return perfectEnginePromise;
+}
+function loadPerfectPosition(e,seq){
+  e.c4_reset();
+  for(const ch of seq||''){const r=e.c4_play(Number(ch)-1);if(r!==1)throw new Error('Invalid solver position');}
+}
+async function perfectChoose(seq){
+  if(Object.prototype.hasOwnProperty.call(PERFECT_OPENING,seq)) return {col:PERFECT_OPENING[seq],book:true};
+  const e=await perfectEngine();loadPerfectPosition(e,seq);
+  const col=e.c4_best_move_weak();
+  return {col,book:false};
+}
+const searcher=new Searcher();
+self.onmessage=async e=>{
+  const {type,seq,difficulty,token,requestId}=e.data;
+  try{
+    const p=fromSequence(seq||'');
+    if(type===

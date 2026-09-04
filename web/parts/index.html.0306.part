@@ -1,0 +1,12 @@
+'think'){
+      if(difficulty==='impossible'){
+        const pick=await perfectChoose(seq||'');
+        self.postMessage({type:'move',col:pick.col,scores:null,token,perfect:true,book:pick.book});
+        return;
+      }
+      const [depth,budget]=params(difficulty,p.moves,false),scores=searcher.analyze(p,depth,budget),col=chooseMove(scores,difficulty);
+      self.postMessage({type:'move',col,scores,token});
+    }else if(type==='predict'){
+      const currentSeq=seq||'';
+      // Exact opening-policy hits should remain instant and do not need a provisional result.
+      if(Object.prototype.hasOwnProperty.call(PERFECT_OPENING,currentS

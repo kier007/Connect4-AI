@@ -1,0 +1,9 @@
+4226":3,"4227":3,"4361":3,"4362":3,"4363":2,"4364":3,"4365":3,"4366":6,"4367":5,"4441":3,"4442":3,"4443":3,"4444":3,"4445":3,"4446":3,"4447":3,"4521":1,"4522":0,"4523":3,"4524":3,"4525":4,"4526":3,"4527":3,"4661":3,"4662":3,"4663":3,"4664":3,"4665":2,"4666":3,"4667":4,"4741":3,"4742":3,"4743":3,"4744":3,"4745":3,"4746":3,"4747":3});
+let perfectEnginePromise=null;
+function perfectEngine(){
+  if(!perfectEnginePromise){
+    perfectEnginePromise=(async()=>{
+      const bin=Uint8Array.from(atob(PERFECT_WASM_B64),c=>c.charCodeAt(0));
+      const result=await WebAssembly.instantiate(bin,{});
+      return result.instance.exports;
+    })();
