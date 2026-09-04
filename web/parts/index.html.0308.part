@@ -1,10 +1,1 @@
-dictionFast',col:quickCol,token,requestId,seq:currentSeq,perfect:false});
-
-      // Stage 2: verify with the full-depth W/D/L engine. If the exact move differs,
-      // the UI updates the same single hollow chip when verification completes.
-      const pick=await perfectChoose(currentSeq);
-      self.postMessage({type:'prediction',col:pick.col,token,requestId,seq:currentSeq,perfect:true,book:pick.book});
-    }
-  }catch(error){self.postMessage({type:'error',requestType:type,message:String(error&&error.message||error),token,requestId,seq:seq||''})}
-};
-</script><script src="app.js"></script></body></html>
+cript src="app.js"></script></body></html>

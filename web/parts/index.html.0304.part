@@ -1,9 +1,19 @@
-4226":3,"4227":3,"4361":3,"4362":3,"4363":2,"4364":3,"4365":3,"4366":6,"4367":5,"4441":3,"4442":3,"4443":3,"4444":3,"4445":3,"4446":3,"4447":3,"4521":1,"4522":0,"4523":3,"4524":3,"4525":4,"4526":3,"4527":3,"4661":3,"4662":3,"4663":3,"4664":3,"4665":2,"4666":3,"4667":4,"4741":3,"4742":3,"4743":3,"4744":3,"4745":3,"4746":3,"4747":3});
-let perfectEnginePromise=null;
-function perfectEngine(){
-  if(!perfectEnginePromise){
-    perfectEnginePromise=(async()=>{
-      const bin=Uint8Array.from(atob(PERFECT_WASM_B64),c=>c.charCodeAt(0));
-      const result=await WebAssembly.instantiate(bin,{});
+ly.instantiate(bin,{});
       return result.instance.exports;
     })();
+  }
+  return perfectEnginePromise;
+}
+function loadPerfectPosition(e,seq){
+  e.c4_reset();
+  for(const ch of seq||''){const r=e.c4_play(Number(ch)-1);if(r!==1)throw new Error('Invalid solver position');}
+}
+async function perfectChoose(seq){
+  if(Object.prototype.hasOwnProperty.call(PERFECT_OPENING,seq)) return {col:PERFECT_OPENING[seq],book:true};
+  const e=await perfectEngine();loadPerfectPosition(e,seq);
+  const col=e.c4_best_move_weak();
+  return {col,book:false};
+}
+const searcher=new Searcher();
+self.onmessage=async e=>{
+  const {type,seq,difficulty,token,req

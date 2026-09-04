@@ -1,12 +1,11 @@
-eq)){
-        self.postMessage({type:'prediction',col:PERFECT_OPENING[currentSeq],token,requestId,seq:currentSeq,perfect:true,book:true});
-        return;
-      }
+=chooseMove(quickScores,'impossible');
+      self.postMessage({type:'predictionFast',col:quickCol,token,requestId,seq:currentSeq,perfect:false});
 
-      // Stage 1: return a strong move quickly using the same alpha-beta family as Vs AI.
-      // This makes the hollow chip appear promptly instead of waiting on a difficult full solve.
-      const quickDifficulty=e.data.fastDifficulty||'hard';
-      const quickParams=params(quickDifficulty,p.moves,true);
-      const quickScores=searcher.analyze(p,quickParams[0],quickParams[1]);
-      const quickCol=chooseMove(quickScores,'impossible');
-      self.postMessage({type:'pre
+      // Stage 2: verify with the full-depth W/D/L engine. If the exact move differs,
+      // the UI updates the same single hollow chip when verification completes.
+      const pick=await perfectChoose(currentSeq);
+      self.postMessage({type:'prediction',col:pick.col,token,requestId,seq:currentSeq,perfect:true,book:pick.book});
+    }
+  }catch(error){self.postMessage({type:'error',requestType:type,message:String(error&&error.message||error),token,requestId,seq:seq||''})}
+};
+</script><s
