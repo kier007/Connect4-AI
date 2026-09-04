@@ -1,0 +1,76 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#0c0d0e"><title>Connect4 AI</title><link rel="icon" type="image/png" href="app-icon.svg"><link rel="apple-touch-icon" href="app-icon.svg"><link rel="stylesheet" href="styles.css"></head>
+<body><div id="root"></div><script src="vendor/react.production.min.js"></script><script src="vendor/react-dom.production.min.js"></script><script id="solverWorkerSource" type="text/plain">
+'use strict';
+const W=7,H=6,BS=42,COLS=[3,2,4,1,5,0,6],INF=1000000,WIN=100000;
+const bottomMaskCol=c=>1n<<BigInt(c*7), topMaskCol=c=>1n<<BigInt(5+c*7), columnMask=c=>63n<<BigInt(c*7);
+let BOTTOM=0n;for(let c=0;c<7;c++)BOTTOM|=bottomMaskCol(c);const BOARD=BOTTOM*63n;
+function popcount(x){let n=0;while(x){x&=x-1n;n++;}return n;}
+function winningPositions(position,mask){
+  let r=(position<<1n)&(position<<2n)&(position<<3n);
+  let p=(position<<7n)&(position<<14n);r|=p&(position<<21n);r|=p&(position>>7n);p>>=21n;r|=p&(position<<7n);r|=p&(position>>21n);
+  p=(position<<6n)&(position<<12n);r|=p&(position<<18n);r|=p&(position>>6n);p>>=18n;r|=p&(position<<6n);r|=p&(position>>18n);
+  p=(position<<8n)&(position<<16n);r|=p&(position<<24n);r|=p&(position>>8n);p>>=24n;r|=p&(position<<8n);r|=p&(position>>24n);
+  return r&(BOARD^mask);
+}
+const LINES=[];
+for(let r=0;r<6;r++)for(let c=0;c<=3;c++){let m=0n;for(let k=0;k<4;k++)m|=1n<<BigInt(r+(c+k)*7);LINES.push(m)}
+for(let c=0;c<7;c++)for(let r=0;r<=2;r++){let m=0n;for(let k=0;k<4;k++)m|=1n<<BigInt((r+k)+c*7);LINES.push(m)}
+for(let c=0;c<=3;c++)for(let r=0;r<=2;r++){let m=0n;for(let k=0;k<4;k++)m|=1n<<BigInt((r+k)+(c+k)*7);LINES.push(m)}
+for(let c=0;c<=3;c++)for(let r=3;r<6;r++){let m=0n;for(let k=0;k<4;k++)m|=1n<<BigInt((r-k)+(c+k)*7);LINES.push(m)}
+class Position{
+  constructor(position=0n,mask=0n,moves=0){this.position=position;this.mask=mask;this.moves=moves}
+  clone(){return new Position(this.position,this.mask,this.moves)}
+  isPlayable(c){return(this.mask&topMaskCol(c))===0n}
+  possible(){return(this.mask+BOTTOM)&BOARD}
+  canWinNext(){return(winningPositions(this.position,this.mask)&this.possible())>0n}
+  isWinningMove(c){return(winningPositions(this.position,this.mask)&this.possible()&columnMask(c))>0n}
+  play(c){this.position^=this.mask;this.mask|=this.mask+bottomMaskCol(c);this.moves++}
+  opponentWinningPositions(){return winningPositions(this.position^this.mask,this.mask)}
+  possibleNonLosingMoves(){let possible=this.possible(),opp=this.opponentWinningPositions(),forced=possible&opp;if(forced>0n){if((forced&(forced-1n))>0n)return 0n;possible=forced}return possible&~(opp>>1n)&BOARD}
+  scoreMove(moveBit){return popcount(winningPositions(this.position|moveBit,this.mask))}
+  key(){
+    const key=this.position+this.mask;let mp=0n,mm=0n;
+    for(let c=0;c<3;c++){const mc=6-c,sh=BigInt((mc-c)*7);mp|=((this.position&columnMask(c))<<sh)|((this.position&columnMask(mc))>>sh);mm|=((this.mask&columnMask(c))<<sh)|((this.mask&columnMask(mc))>>sh)}
+    mp|=this.position&columnMask(3);mm|=this.mask&columnMask(3);const mirror=mp+mm;return key<mirror?key:mirror;
+  }
+}
+function fromSequence(seq){const p=new Position();for(const ch of seq){const c=Number(ch)-1;if(c>=0&&c<7&&p.isPlayable(c))p.play(c)}return p}
+function evaluate(p){
+  const me=p.position,opp=p.position^p.mask,weights=[0,1,8,60,0];let score=0;
+  for(const line of LINES){const a=popcount(me&line),b=popcount(opp&line);if(a&&b)continue;if(a)score+=weights[a];else if(b)score-=weights[b]}
+  score+=(popcount(me&columnMask(3))-popcount(opp&columnMask(3)))*3;
+  const poss=p.possible();score+=(popcount(winningPositions(me,p.mask)&poss)-popcount(winningPositions(opp,p.mask)&poss))*100;
+  return score;
+}
+class SearchTimeout{}
+class Searcher{
+  constructor(){this.tt=new Map();this.nodes=0;this.deadline=0}
+  check(){if((this.nodes&1023)===0&&performance.now()>this.deadline)throw new SearchTimeout()}
+  negamax(p,depth,alpha,beta){
+    this.nodes++;this.check();if(p.moves>=42)return 0;if(p.canWinNext())return WIN-p.moves;
+    const possible=p.possibleNonLosingMoves();if(possible===0n)return-WIN+p.moves;if(depth<=0)return evaluate(p);
+    const key=p.key(),originalAlpha=alpha,entry=this.tt.get(key);
+    if(entry&&entry.depth>=depth){if(entry.flag===0)return entry.value;if(entry.flag===1&&entry.value>=beta)return entry.value;if(entry.flag===2&&entry.value<=alpha)return entry.value}
+    const moves=[];for(const c of COLS){const bit=possible&columnMask(c);if(bit>0n)moves.push([c,p.scoreMove(bit)])}
+    moves.sort((a,b)=>b[1]-a[1]||COLS.indexOf(a[0])-COLS.indexOf(b[0]));
+    for(const [c] of moves){const next=p.clone();next.play(c);const value=-this.negamax(next,depth-1,-beta,-alpha);if(value>alpha)alpha=value;if(alpha>=beta)break}
+    const flag=alpha<=originalAlpha?2:(alpha>=beta?1:0);if(this.tt.size>180000)this.tt.clear();this.tt.set(key,{value:alpha,depth,flag});return alpha;
+  }
+  analyze(p,maxDepth,budgetMs){
+    this.deadline=performance.now()+budgetMs;this.nodes=0;let last=null,order=COLS.slice();
+    for(let depth=1;depth<=Math.min(maxDepth,42-p.moves);depth++){
+      const current=Array(7).fill(null);
+      try{
+        for(const c of order){if(!p.isPlayable(c))continue;if(p.isWinningMove(c))current[c]=WIN-p.moves;else{const next=p.clone();next.play(c);current[c]=-this.negamax(next,depth-1,-INF,INF)}}
+      }catch(err){if(err instanceof SearchTimeout)break;throw err}
+      last=current;order=order.filter(c=>current[c]!==null).sort((a,b)=>current[b]-current[a]);
+    }
+    if(!last){last=Array(7).fill(null);for(const c of COLS)if(p.isPlayable(c))last[c]=p.isWinningMove(c)?WIN-p.moves:evaluateAfter(p,c)}
+    return last;
+  }
+}
+function evaluateAfter(p,c){const n=p.clone();n.play(c);return-evaluate(n)}
+function params(difficulty,moves,hint=false){
+  const rem=42-moves;
+  if(hint){if(difficulty==='easy')return[4,45];if(difficulty==='medium')return[5

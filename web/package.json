@@ -1,0 +1,13 @@
+{
+  "name": "connect4-ai-web",
+  "version": "3.1.0",
+  "private": true,
+  "description": "Offline React interface for Connect4 AI",
+  "scripts": {
+    "prepare:android": "node prepare-android-assets.mjs"
+  },
+  "dependencies": {
+    "react": "16.14.0",
+    "react-dom": "16.14.0"
+  }
+}

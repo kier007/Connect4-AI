@@ -1,0 +1,86 @@
+;
+      var row=ROWS-1-this.heights[col];this.heights[col]++;this.grid[row][col]=player;this.sequence+=String(col+1);
+    }
+    this.currentPlayer=(this.sequence.length%2===0)?1:2;this.lastMove=null;
+  };
+  App.prototype.canUndo=function(){
+    if(!this.sequence.length)return false;
+    if(this.mode==='two')return true;
+    return this.sequence.length>=(this.humanPlayer===1?1:2);
+  };
+  App.prototype.undoMove=function(){
+    if(!this.canUndo())return;
+    this.token++;this.predictionRequestId++;this.spawnWorkers();
+    var removeCount=1;
+    if(this.mode==='ai'){
+      var lastPlayer=(this.sequence.length%2===1)?1:2;
+      if(lastPlayer===this.aiPlayer&&!this.busy)removeCount=2;
+      else if(lastPlayer===this.aiPlayer&&this.over)removeCount=2;
+      if(removeCount>this.sequence.length)removeCount=this.sequence.length;
+    }
+    var nextSeq=this.sequence.slice(0,Math.max(0,this.sequence.length-removeCount));
+    this.rebuildFromSequence(nextSeq);
+    this.busy=false;this.over=false;this.gameOverTitle='';this.predictionCol=null;this.predictionBusy=false;this.predictionError='';
+    if(this.mode==='two'){
+      this.setStatus((this.currentPlayer===1?'Red':'Yellow')+' turn · Undone');
+      setTimeout(this.requestPrediction.bind(this),0);return;
+    }
+    if(this.currentPlayer===this.humanPlayer){
+      this.setStatus('Your turn · '+(this.humanPlayer===1?'Red':'Yellow')+' · Undone');
+      setTimeout(this.requestPrediction.bind(this),0);
+    }else{
+      this.busy=true;this.setStatus(this.difficulty==='impossible'?'Perfect AI solving…':'AI thinking…');
+      this.aiWorker.postMessage({type:'think',seq:this.sequence,difficulty:this.difficulty,token:this.token});
+    }
+  };
+  App.prototype.togglePrediction=function(){
+    this.predictionMode=!this.predictionMode;this.predictionCol=null;this.predictionBusy=false;this.predictionError='';
+    if(!this.predictionMode){this.predictionRequestId++;if(this.predictionWorker){this.predictionWorker.terminate();this.predictionWorker=null;}this.sync();return;}
+    this.spawnPredictionWorker();this.sync();setTimeout(this.requestPrediction.bind(this),0);
+  };
+  App.prototype.startGame=function(mode){
+    this.mode=mode;this.state.draftMode=mode;
+    var self=this;this.setState({screen:'game',gameMenuOpen:false,modalOpen:false},function(){self.resetGame(false);});
+  };
+  App.prototype.openGameMenu=function(){if(this.state.screen==='game')this.setState({gameMenuOpen:true});};
+  App.prototype.closeGameMenu=function(){this.setState({gameMenuOpen:false});};
+  App.prototype.restartFromMenu=function(){this.setState({gameMenuOpen:false});this.resetGame(false);};
+  App.prototype.goHome=function(){
+    this.token++;this.predictionRequestId++;if(this.aiWorker){this.aiWorker.terminate();this.aiWorker=null;}if(this.predictionWorker){this.predictionWorker.terminate();this.predictionWorker=null;}
+    this.busy=false;this.over=false;this.predictionBusy=false;this.predictionCol=null;this.lastMove=null;this.setState({screen:'menu',gameMenuOpen:false,modalOpen:false,status:''});
+  };
+  App.prototype.openSettings=function(context){
+    var ctx=typeof context==='string'?context:(this.state.screen==='game'?'game':'menu');
+    this.setState({modalOpen:true,gameMenuOpen:false,settingsContext:ctx,draftMode:this.mode,draftPlayer:this.humanPlayer===1?'p1':'p2',draftDifficulty:this.difficulty});
+  };
+  App.prototype.cancelSettings=function(){this.setState({modalOpen:false});};
+  App.prototype.saveSettings=function(){
+    this.mode=this.state.draftMode||'ai';var selected=this.state.draftPlayer||'p1';this.humanPlayer=selected==='p1'?1:2;this.aiPlayer=this.humanPlayer===1?2:1;this.difficulty=this.state.draftDifficulty||'impossible';
+    var ctx=this.state.settingsContext,self=this;this.setState({modalOpen:false,gameMenuOpen:false},function(){if(ctx==='game'){self.resetGame(false);}else{self.sync();}});
+  };
+  App.prototype.render=function(){
+    var self=this;
+    if(this.state.screen==='menu'){
+      return h('div',{className:'app minimalist-app'},
+        h(HomeMenu,{difficulty:this.difficulty,humanPlayer:this.humanPlayer,onStart:this.startGame,onSettings:function(){self.openSettings('menu');}}),
+        h(SettingsModal,{open:this.state.modalOpen,context:this.state.settingsContext,mode:this.state.draftMode,player:this.state.draftPlayer,difficulty:this.state.draftDifficulty,
+          onMode:function(v){self.setState({draftMode:v});},onPlayer:function(v){self.setState({draftPlayer:v});},onDifficulty:function(v){self.setState({draftDifficulty:v});},onCancel:this.cancelSettings,onSave:this.saveSettings})
+      );
+    }
+    var disabled=this.busy||this.over||(this.mode==='ai'&&this.currentPlayer!==this.humanPlayer);
+    var modeLabel=this.mode==='two'?'2 Players':difficultyLabel(this.difficulty)+' AI';
+    var turnLabel=this.mode==='two'?(this.currentPlayer===1?'Red turn':'Yellow turn'):(this.busy?'AI thinking':(this.currentPlayer===this.humanPlayer?'Your turn':'AI turn'));
+    var predictionText='Prediction off';
+    if(this.predictionMode){
+      if(this.predictionBusy&&this.predictionCol!==null&&this.predictionCol!==undefined)predictionText='Best move shown · verifying';
+      else if(this.predictionBusy)predictionText='Analyzing best move';
+      else if(this.predictionError)predictionText=this.predictionError;
+      else if(this.mode==='ai'&&this.currentPlayer!==this.humanPlayer)predictionText='Prediction resumes on your turn';
+      else if(this.predictionCol!==null&&this.predictionCol!==undefined)predictionText='Hollow chip is the best move';
+      else predictionText='Preparing best move';
+    }
+    return h('div',{className:'app minimalist-app'},h('main',{className:'game-screen screen-enter'},
+      h('header',{className:'game-header'},
+        h(IconButton,{icon:'menu',label:'Game menu',onClick:this.openGameMenu}),
+        h('div',{className:'game-heading'},h('div',{className:'game-mode'},modeLabel),h('div',{className:'game-status'+(this.busy?' thinking':'')},turnLabel)),
+       

@@ -1,0 +1,19 @@
+ h('div',{className:'turn-chip '+(this.currentPlayer===1?'red':'yellow'),'aria-label':this.currentPlayer===1?'Red to move':'Yellow to move'})
+      ),
+      h('section',{className:'board-section'},
+        h(Board,{grid:this.grid,heights:this.heights,lastMove:this.lastMove,disabled:disabled,onColumn:this.humanMove,predictionEnabled:this.predictionMode,predictionCol:this.predictionCol,predictionPlayer:this.currentPlayer,over:this.over,gameOverTitle:this.gameOverTitle,onReset:this.resetGame,onHome:this.goHome}),
+        h('div',{className:'analysis-line'+(this.predictionMode?' active':'')+(this.predictionBusy?' analyzing':'')},h('span',{className:'analysis-dot'}),h('span',null,predictionText))
+      ),
+      h('nav',{className:'action-dock'},
+        h(ActionButton,{icon:'undo',label:'Undo',disabled:!this.canUndo(),onClick:this.undoMove}),
+        h(ActionButton,{icon:'prediction',label:'Prediction',active:this.predictionMode,onClick:this.togglePrediction})
+      ),
+      h(GameMenu,{open:this.state.gameMenuOpen,onClose:this.closeGameMenu,onRestart:this.restartFromMenu,onSettings:function(){self.openSettings('game');},onHome:this.goHome}),
+      h(SettingsModal,{open:this.state.modalOpen,context:this.state.settingsContext,mode:this.state.draftMode,player:this.state.draftPlayer,difficulty:this.state.draftDifficulty,
+        onMode:function(v){self.setState({draftMode:v});},onPlayer:function(v){self.setState({draftPlayer:v});},onDifficulty:function(v){self.setState({draftDifficulty:v});},onCancel:this.cancelSettings,onSave:this.saveSettings})
+    ));
+  };
+
+
+  ReactDOM.render(h(App),document.getElementById('root'));
+})();

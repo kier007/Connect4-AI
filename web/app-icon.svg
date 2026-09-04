@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Connect4 AI icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#17191b"/>
+      <stop offset="1" stop-color="#08090a"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffd56a"/>
+      <stop offset="1" stop-color="#b66b18"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <rect x="18" y="18" width="476" height="476" rx="104" fill="url(#bg)" stroke="#bd7a26" stroke-width="10"/>
+  <g filter="url(#shadow)">
+    <rect x="82" y="92" width="300" height="328" rx="46" fill="#202326" stroke="#8e5b20" stroke-width="8"/>
+    <g fill="#090a0b" stroke="#3b3f43" stroke-width="4">
+      <circle cx="126" cy="142" r="25"/><circle cx="190" cy="142" r="25"/><circle cx="254" cy="142" r="25"/><circle cx="318" cy="142" r="25"/>
+      <circle cx="126" cy="214" r="25"/><circle cx="190" cy="214" r="25"/><circle cx="254" cy="214" r="25"/><circle cx="318" cy="214" r="25"/>
+      <circle cx="126" cy="286" r="25"/><circle cx="190" cy="286" r="25"/><circle cx="254" cy="286" r="25"/><circle cx="318" cy="286" r="25"/>
+      <circle cx="126" cy="358" r="25"/><circle cx="190" cy="358" r="25"/><circle cx="254" cy="358" r="25"/><circle cx="318" cy="358" r="25"/>
+    </g>
+    <g stroke-width="5">
+      <circle cx="254" cy="142" r="26" fill="#e3423a" stroke="#92211d"/>
+      <circle cx="254" cy="214" r="26" fill="#f2c94c" stroke="#a06d12"/>
+      <circle cx="254" cy="286" r="26" fill="#e3423a" stroke="#92211d"/>
+      <circle cx="254" cy="358" r="26" fill="#f2c94c" stroke="#a06d12"/>
+    </g>
+    <path d="M354 192c42 0 72 28 72 65 0 22-11 39-28 51 17 12 28 29 28 51 0 37-30 65-72 65-20 0-34-9-45-21-11 12-25 21-45 21-42 0-72-28-72-65 0-22 11-39 28-51-17-12-28-29-28-51 0-37 30-65 72-65 20 0 34 9 45 21 11-12 25-21 45-21Z" fill="#151719" stroke="url(#gold)" stroke-width="8"/>
+    <g fill="none" stroke="url(#gold)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M309 218v164M309 240h30l18-18M309 272h52l18-18M309 304h70M309 336h52l18 18M309 368h30l18 18"/>
+      <path d="M264 218v164M264 240h-30l-18-18M264 272h-52l-18-18M264 304h-70M264 336h-52l-18 18M264 368h-30l-18 18"/>
+    </g>
+    <g fill="#ffd56a">
+      <circle cx="357" cy="222" r="7"/><circle cx="379" cy="254" r="7"/><circle cx="379" cy="304" r="7"/><circle cx="379" cy="354" r="7"/><circle cx="357" cy="386" r="7"/>
+      <circle cx="216" cy="222" r="7"/><circle cx="194" cy="254" r="7"/><circle cx="194" cy="304" r="7"/><circle cx="194" cy="354" r="7"/><circle cx="216" cy="386" r="7"/>
+    </g>
+  </g>
+</svg>

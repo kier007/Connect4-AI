@@ -1,0 +1,73 @@
+Red moves first. Pass the phone between turns. Prediction follows the active player.'),
+          h('div',{className:'setting-note'},'Prediction appears quickly, then verifies the move with the bundled exact solver. Everything stays on-device.')
+        ),
+        h('div',{className:'sheet-actions'},h('button',{className:'secondary-button',onClick:props.onCancel},'Cancel'),h('button',{className:'primary-button',onClick:props.onSave},props.context==='game'?'Apply & restart':'Save settings'))
+      )
+    );
+  }
+
+  function GameMenu(props){
+    if(!props.open)return null;
+    return h('div',{className:'modal sheet-modal'},h('div',{className:'backdrop fade-in',onClick:props.onClose}),
+      h('section',{className:'sheet compact-sheet slide-up'},h('div',{className:'sheet-handle'}),
+        h('div',{className:'game-menu-title'},'Game menu'),
+        h('div',{className:'game-menu-list'},
+          h('button',{onClick:props.onClose},h(Icon,{name:'play'}),h('span',null,'Resume')),
+          h('button',{onClick:props.onRestart},h(Icon,{name:'restart'}),h('span',null,'New game')),
+          h('button',{onClick:props.onSettings},h(Icon,{name:'settings'}),h('span',null,'Game settings')),
+          h('button',{onClick:props.onHome},h(Icon,{name:'home'}),h('span',null,'Main menu'))
+        )
+      )
+    );
+  }
+
+  function Board(props){
+    var cells=[];
+    var predictionRow=-1;
+    if(props.predictionEnabled&&props.predictionCol!==null&&props.predictionCol!==undefined&&props.predictionCol>=0&&props.predictionCol<COLS&&props.heights[props.predictionCol]<ROWS){predictionRow=ROWS-1-props.heights[props.predictionCol];}
+    for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){
+      var v=props.grid[r][c],content=null,isLast=props.lastMove&&props.lastMove.row===r&&props.lastMove.col===c;
+      if(v){content=h('div',{className:'piece '+(v===1?'red':'yellow')+(isLast?' new-piece':'')});}
+      else if(r===predictionRow&&c===props.predictionCol){content=h('div',{className:'prediction-ring '+(props.predictionPlayer===1?'red':'yellow'),'aria-hidden':'true'});}
+      cells.push(h('div',{className:'cell'+(r===predictionRow&&c===props.predictionCol?' predicted':''),key:'c'+r+'-'+c},content));
+    }
+    var columns=[];
+    for(var col=0;col<COLS;col++)(function(c){columns.push(h('button',{key:'b'+c,className:'column',disabled:props.disabled||props.heights[c]>=ROWS,onClick:function(){props.onColumn(c);},'aria-label':'Play column '+(c+1)}));})(col);
+    return h('div',{className:'board-wrap board-enter'},
+      h('div',{className:'board'},cells,h('div',{className:'click-grid'},columns),
+        props.over?h('div',{className:'gameover fade-in'},h('div',{className:'gameover-card slide-up'},h('div',{className:'gameover-kicker'},'GAME OVER'),h('div',{className:'gameover-title'},props.gameOverTitle),h('div',{className:'gameover-actions'},h('button',{className:'primary-button',onClick:props.onReset},'Play again'),h('button',{className:'secondary-button',onClick:props.onHome},'Menu')))):null
+      )
+    );
+  }
+
+  function App(){
+    React.Component.call(this);
+    this.grid=emptyGrid();this.heights=Array(COLS).fill(0);this.sequence='';this.currentPlayer=1;this.humanPlayer=1;this.aiPlayer=2;
+    this.mode='ai';this.difficulty='impossible';this.busy=false;this.over=false;this.predictionMode=false;this.predictionCol=null;this.predictionBusy=false;this.predictionError='';this.predictionRequestId=0;this.token=0;this.aiWorker=null;this.predictionWorker=null;this.gameOverTitle='';this.lastMove=null;
+    this.state={tick:0,status:'',screen:'menu',modalOpen:false,settingsContext:'menu',gameMenuOpen:false,draftMode:'ai',draftPlayer:'p1',draftDifficulty:'impossible'};
+    this.humanMove=this.humanMove.bind(this);this.undoMove=this.undoMove.bind(this);this.togglePrediction=this.togglePrediction.bind(this);this.resetGame=this.resetGame.bind(this);this.openSettings=this.openSettings.bind(this);this.cancelSettings=this.cancelSettings.bind(this);this.saveSettings=this.saveSettings.bind(this);this.startGame=this.startGame.bind(this);this.openGameMenu=this.openGameMenu.bind(this);this.closeGameMenu=this.closeGameMenu.bind(this);this.goHome=this.goHome.bind(this);this.restartFromMenu=this.restartFromMenu.bind(this);
+  }
+  App.prototype=Object.create(React.Component.prototype);App.prototype.constructor=App;
+  App.prototype.componentDidMount=function(){this.sync({status:''});};
+  App.prototype.componentWillUnmount=function(){if(this.aiWorker)this.aiWorker.terminate();if(this.predictionWorker)this.predictionWorker.terminate();};
+  App.prototype.sync=function(extra){this.setState(Object.assign({tick:this.state.tick+1},extra||{}));};
+  App.prototype.setStatus=function(text){this.sync({status:text});};
+  App.prototype.workerSource=function(){return document.getElementById('solverWorkerSource').textContent;};
+  App.prototype.spawnAIWorker=function(){
+    if(this.aiWorker)this.aiWorker.terminate();
+    this.aiWorker=new Worker(URL.createObjectURL(new Blob([this.workerSource()],{type:'application/javascript'})));
+    var self=this;
+    this.aiWorker.onmessage=function(e){self.handleWorkerMessage(e.data);};
+    this.aiWorker.onerror=function(){self.busy=false;self.setStatus('AI error — reset the game');};
+  };
+  App.prototype.spawnPredictionWorker=function(){
+    if(this.predictionWorker)this.predictionWorker.terminate();
+    this.predictionWorker=new Worker(URL.createObjectURL(new Blob([this.workerSource()],{type:'application/javascript'})));
+    var self=this;
+    this.predictionWorker.onmessage=function(e){self.handlePredictionMessage(e.data);};
+    this.predictionWorker.onerror=function(){self.predictionBusy=false;self.predictionCol=null;self.predictionError='Prediction error — tap ◎ to retry';self.sync();};
+  };
+  App.prototype.spawnWorkers=function(){this.spawnAIWorker();this.spawnPredictionWorker();};
+  App.prototype.cancelPrediction=function(){
+    this.predictionRequestId++;this.predictionBusy=false;this.predictionCol=null;this.predictionError='';
+ 

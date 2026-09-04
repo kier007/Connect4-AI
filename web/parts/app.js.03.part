@@ -1,0 +1,101 @@
+   if(this.predictionWorker){this.predictionWorker.terminate();this.predictionWorker=null;}
+    if(this.predictionMode&&!this.over)this.spawnPredictionWorker();
+  };
+  App.prototype.applyMove=function(col,player){
+    if(col==null||col<0||col>=COLS||this.heights[col]>=ROWS)return null;
+    var row=ROWS-1-this.heights[col];this.heights[col]++;this.grid[row][col]=player;this.sequence+=String(col+1);this.lastMove={row:row,col:col,player:player};this.sync();return row;
+  };
+  App.prototype.isWin=function(row,col,player){
+    var dirs=[[1,0],[0,1],[1,1],[1,-1]];
+    for(var d=0;d<dirs.length;d++){
+      var dr=dirs[d][0],dc=dirs[d][1],count=1;
+      for(var si=0;si<2;si++){
+        var sign=si===0?-1:1,r=row+dr*sign,c=col+dc*sign;
+        while(r>=0&&r<ROWS&&c>=0&&c<COLS&&this.grid[r][c]===player){count++;r+=dr*sign;c+=dc*sign;}
+      }
+      if(count>=4)return true;
+    }
+    return false;
+  };
+  App.prototype.finish=function(winner){
+    this.over=true;this.busy=false;this.cancelPrediction();
+    if(winner===0){this.gameOverTitle="It's a Draw!";}
+    else if(this.mode==='two'){this.gameOverTitle=winner===1?'Red Wins!':'Yellow Wins!';}
+    else {this.gameOverTitle=winner===this.humanPlayer?'You Win!':'You Lose!';}
+    this.setStatus('Game over');
+  };
+  App.prototype.afterMove=function(row,col,player){
+    if(row===null)return false;
+    if(this.isWin(row,col,player)){this.finish(player);return true;}
+    if(this.sequence.length>=42){this.finish(0);return true;}
+    return false;
+  };
+  App.prototype.humanMove=function(col){
+    if(this.busy||this.over||this.heights[col]>=ROWS)return;
+    if(this.mode==='ai'&&this.currentPlayer!==this.humanPlayer)return;
+    if(this.predictionMode)this.cancelPrediction();else this.predictionCol=null;
+    var player=this.currentPlayer,row=this.applyMove(col,player);
+    if(this.afterMove(row,col,player))return;
+    if(this.mode==='two'){
+      this.currentPlayer=player===1?2:1;this.busy=false;
+      this.setStatus((this.currentPlayer===1?'Red':'Yellow')+' turn');
+      setTimeout(this.requestPrediction.bind(this),0);
+      return;
+    }
+    this.currentPlayer=this.aiPlayer;this.busy=true;this.setStatus(this.difficulty==='impossible'?'Perfect AI solving…':'AI thinking…');
+    this.aiWorker.postMessage({type:'think',seq:this.sequence,difficulty:this.difficulty,token:this.token});
+  };
+  App.prototype.requestPrediction=function(){
+    if(!this.predictionMode||this.over||this.busy)return;
+    if(this.mode==='ai'&&this.currentPlayer!==this.humanPlayer)return;
+    // Always solve the newest board. If an older exact solve is still running, kill it
+    // instead of letting a stale request block the worker queue.
+    if(this.predictionBusy||!this.predictionWorker)this.spawnPredictionWorker();
+    var requestId=++this.predictionRequestId,seq=this.sequence;
+    this.predictionCol=null;this.predictionBusy=true;this.predictionError='';this.sync();
+    this.predictionWorker.postMessage({type:'predict',seq:seq,difficulty:'impossible',fastDifficulty:(this.mode==='ai'&&this.difficulty!=='impossible'?this.difficulty:'hard'),token:this.token,requestId:requestId});
+  };
+  App.prototype.handleWorkerMessage=function(msg){
+    if(msg.token!==this.token)return;
+    if(msg.type==='move'){
+      if(this.mode!=='ai'||this.over)return;
+      var row=this.applyMove(msg.col,this.aiPlayer);if(this.afterMove(row,msg.col,this.aiPlayer))return;
+      this.currentPlayer=this.humanPlayer;this.busy=false;this.setStatus('Your turn · '+(this.humanPlayer===1?'Red':'Yellow'));setTimeout(this.requestPrediction.bind(this),0);
+    }else if(msg.type==='error'&&this.mode==='ai'){
+      this.busy=false;this.setStatus('AI error — reset the game');
+    }
+  };
+  App.prototype.handlePredictionMessage=function(msg){
+    if(msg.token!==this.token)return;
+    if(msg.requestId!==this.predictionRequestId)return;
+    if(msg.seq!==this.sequence)return;
+    if(!this.predictionMode||this.over)return;
+    if(this.mode==='ai'&&this.currentPlayer!==this.humanPlayer)return;
+    if(msg.type==='predictionFast'){
+      // Show the quick candidate immediately, but keep the busy state while the exact
+      // W/D/L solver verifies it in the background.
+      this.predictionCol=msg.col;this.predictionError='';this.predictionBusy=true;this.sync();
+    }else if(msg.type==='prediction'){
+      this.predictionBusy=false;this.predictionError='';this.predictionCol=msg.col;this.sync();
+    }else if(msg.type==='error'){
+      this.predictionBusy=false;this.predictionCol=null;this.predictionError='Prediction error — tap ◎ to retry';this.sync();
+    }
+  };
+  App.prototype.resetGame=function(useDraft){
+    this.token++;this.predictionRequestId++;this.spawnWorkers();this.grid=emptyGrid();this.heights=Array(COLS).fill(0);this.sequence='';this.currentPlayer=1;
+    if(useDraft===true){
+      this.mode=this.state.draftMode||'ai';
+      var selected=this.state.draftPlayer||'p1';this.humanPlayer=selected==='p1'?1:2;this.aiPlayer=this.humanPlayer===1?2:1;this.difficulty=this.state.draftDifficulty||'impossible';
+    }
+    this.busy=false;this.over=false;this.predictionCol=null;this.predictionBusy=false;this.predictionError='';this.gameOverTitle='';this.lastMove=null;
+    if(this.mode==='two'){
+      this.setStatus('Red turn');setTimeout(this.requestPrediction.bind(this),0);return;
+    }
+    if(this.currentPlayer===this.humanPlayer){this.setStatus('Your turn · '+(this.humanPlayer===1?'Red':'Yellow'));setTimeout(this.requestPrediction.bind(this),0);}
+    else {this.busy=true;this.setStatus(this.difficulty==='impossible'?'Perfect AI solving…':'AI thinking…');this.aiWorker.postMessage({type:'think',seq:this.sequence,difficulty:this.difficulty,token:this.token});}
+  };
+  App.prototype.rebuildFromSequence=function(seq){
+    this.grid=emptyGrid();this.heights=Array(COLS).fill(0);this.sequence='';
+    for(var i=0;i<seq.length;i++){
+      var col=parseInt(seq.charAt(i),10)-1,player=(i%2===0)?1:2;
+      if(col<0||col>=COLS||this.heights[col]>=ROWS)continue
