@@ -71,7 +71,7 @@ Let:
 Every legal landing square can be generated at once with:
 
 $$
-\operatorname{Possible}(M) = (M + B) \land G.
+\mathrm{Possible}(M) = (M + B) \land G.
 $$
 
 The addition carries upward inside each 7-bit column until it reaches the
@@ -104,15 +104,15 @@ Y = X \land (X \gg d),
 $$
 
 $$
-\operatorname{Win}_d(X) \iff
+\mathrm{Win}_d(X) \iff
 Y \land (Y \gg 2d) \neq 0.
 $$
 
 Therefore:
 
 $$
-\operatorname{Win}(X) =
-\bigvee_{d \in D} \operatorname{Win}_d(X).
+\mathrm{Win}(X) =
+\bigvee_{d \in D} \mathrm{Win}_d(X).
 $$
 
 This checks all horizontal, vertical, and diagonal alignments with only a few
@@ -134,7 +134,7 @@ A terminal position is scored as win, draw, or loss. Non-terminal nodes are
 searched recursively. The best move is:
 
 $$
-a^* = \underset{a \in A(s)}{\operatorname{argmax}}
+a^* = \underset{a \in A(s)}{\mathrm{arg\,max}}
 \left[-V\bigl(T(s,a)\bigr)\right].
 $$
 
@@ -170,7 +170,7 @@ positions in a transposition table. It also merges horizontally mirrored
 positions by using a canonical key:
 
 $$
-K(s) = \min\!\left(k(s), k\bigl(\operatorname{mirror}(s)\bigr)\right).
+K(s) = \min\!\left(k(s), k\bigl(\mathrm{mirror}(s)\bigr)\right).
 $$
 
 This reduces duplicate work without changing the game-theoretic result.
@@ -180,7 +180,7 @@ This reduces duplicate work without changing the game-theoretic result.
 Perfect difficulty chooses the highest-scoring legal move directly:
 
 $$
-a^* = \operatorname*{argmax}_a Q(s,a).
+a^* = \underset{a}{\mathrm{arg\,max}}\; Q(s,a).
 $$
 
 Lower difficulties sample from a temperature-scaled softmax distribution:
